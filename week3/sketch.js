@@ -1,7 +1,13 @@
-let confettiArr = [];
-let pressTime = 0;
-
+let capture;
 let fullScreenButton;
+let classifier;
+
+let confettiArr = [];
+
+let faceMesh;
+let fMOpt = { maxFaces: 1, refineLandmarks: false, flipped: false };
+let faces = [];
+
 // From
 // https://editor.p5js.org/jht1493/sketches/5LgILr8RF
 
@@ -30,43 +36,10 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  setup_fullScreenButton();
-  colorMode(HSB);
-
-  for (let i = 0; i < random(150, 170); i++) {
-    confettiArr[i] = new confetti(random(width), random(height));
-  }
-}
-
-function draw() {
-  background(255);
-  for (let i = 0; i < confettiArr.length; i++) {
-    confettiArr[i].display();
-    confettiArr[i].move();
-    if (confettiArr[i].y > height) {
-      confettiArr[i] = new confetti(random(width), 0);
-    }
-  }
-}
-
-function mousePressed() {
-  //press mouse button to increase the density.
-  for (let i = 0; i < random(50, 70); i++) {
-    confettiArr.push(new confetti(random(width), random(height)));
-  }
-  //press 5 times resets the array
-  if (pressTime >= 5) {
-    let tempArr = [];
-    for (let i = 0; i < random(50, 70); i++) {
-      tempArr[i] = new confetti(random(width), random(height));
-    }
-    confettiArr = tempArr;
-    pressTime = 0;
-    return;
-  }
-  pressTime++;
+// Callback function for when faceMesh outputs data
+function gotFaces(results) {
+  // Save the output to the faces variable
+  faces = results;
 }
 
 class confetti {
@@ -97,6 +70,68 @@ class confetti {
   }
   move() {
     this.y += this.amp / 2;
-    this.x += ((mouseX || windowWidth / 2) - windowWidth / 2) * 0.02;
+    if (faces[0]) {
+      this.x +=
+        ((faces[0].faceOval.centerX * windowWidth) / 1920 - windowWidth / 2) *
+        0.02;
+    }
+  }
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+
+//
+function get_url_params() {
+  let query = window.location.search;
+  // console.log('query |' + query + '|');
+  console.log("query.length", query.length);
+  if (query.length < 1) return null;
+  let params = params_query(query);
+  return params;
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+function params_query(query) {
+  // eg. query='abc=foo&def=%5Basf%5D&xyz=5'
+  // params={abc: "foo", def: "[asf]", xyz: "5"}
+  const urlParams = new URLSearchParams(query);
+  return urlParams;
+}
+
+// Sketch Lifecycle
+
+function preload() {
+  faceMesh = ml5.faceMesh(fMOpt);
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  setup_fullScreenButton();
+  colorMode(HSB);
+  // Create the video capture and hide the element.
+  capture = createCapture(VIDEO);
+  capture.size(1920, 1080);
+  capture.hide();
+  faceMesh.detectStart(capture, gotFaces);
+
+  let params = get_url_params();
+  let count = params?.has("count") ? params.get("count") : 200;
+  console.log("count", count);
+  for (let i = 0; i < count; i++) {
+    confettiArr[i] = new confetti(random(width), random(height));
+  }
+}
+
+function draw() {
+  background(255);
+  image(capture, 0, 0, width, height);
+
+  for (let i = 0; i < confettiArr.length; i++) {
+    let c = confettiArr[i];
+    c.display();
+    c.move();
+    if (c.y > height) {
+      confettiArr[i] = new confetti(random(width), 0);
+    }
   }
 }
