@@ -8,5 +8,12 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun --watch run index.ts",
+    "start": "bun run index.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
   }
 }
